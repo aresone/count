@@ -1,0 +1,93 @@
+function runUrlAnalysis() {
+		var starturlNo = countStartAction();
+		setButton(true);
+		
+		if(starturlNo < 1) {
+			modalAlert('Please select at lease 1 URL for testing.');
+			setButton(false);
+			return;
+		}
+		var jsonString = getTestData();
+		$('#modalData').html('<h1 style="text-align:center;">Running, please wait...</h1>');
+		$('#titleModalUrl').text("Run Url Analysis");
+		$('#modalRun').modal('show');
+		$("body").css("cursor", "wait");
+		
+		var mId = $('#merchantId').val().trim();
+		var param = "obj=" + jsonString + "&mId=" + mId;
+		$.ajax({
+			type: "POST",
+			url: 'runurlAnalysis',
+			data: param,
+			cache: false,
+			async: true,
+//			beforeSend: function (xhr) {
+//			    xhr.setRequestHeader("Content-Length", jsonString.length);
+//			},
+			success: function(data) {
+				if(data.header == 'success'){
+					var result = "";
+					
+//			  		------------------------------------------------------------generate tab button------------------------------------------------------------
+					result += '<div class="tab">';
+					$.each(data.result, function (index, value) {
+						result += '<button class="btn tabLinks" onclick="openTab('+ index + ')">Link_' + (index +1) + '</button>'; 
+					});
+					result += '<input id="searchModal" class="form-control" type="text" onkeyup="filterSearchAnalysis(this)" placeholder="Search.." style="float: right;width: 25%;">'; 					
+					result += '</div>';
+					
+//			  		------------------------------------------------------------generate tab content------------------------------------------------------------
+					$.each(data.result, function (index, value) {
+						result += '<div class="tabContent" id="tabContent_' + index +'" data-index="'+ index +'">';
+						result += '    <div class="tabContentHeader"><h4><a href="' + value.starturl +'" target="_blank" style="text-decoration:none;">' + value.starturl + '</a></h4>';
+						result += '    <div class="runtime">Loading time ' + value.runtime + ' secs</div></div>';
+						result += '    <div style="margin-top:20px;">';
+						result += '        <table id="patternTestAnalysisTable-' + index +'" class="table table-bordered">';
+						result += '            <thead>';
+						result += '                <tr class="heading">';
+						result += '                    <th width="5%"  style="text-align:center;"></th>';
+						result += '                    <th width="5%"  style="text-align:center;"> No. </th>';
+						result += '                    <th width="80%"  style="text-align:center;"> URL </th>';
+						result += '                    <th width="10%" style="text-align:center;"> Action </th>';
+						result += '                </tr>';
+						result += '            </thead>';
+						result += '            <tbody id="tbodyUrlAnalazer">';
+						var testNo = 1;
+						$.each(value.continueUrl, function(contIndex, contUrl) {
+							result += generateRowUrlAnalysis(testNo++, contUrl.url, contUrl.action);
+						});
+						$.each(value.matchUrl, function(matchIndex, matchUrl) {
+							result += generateRowUrlAnalysis(testNo++, matchUrl.url, matchUrl.action);
+						});
+						$.each(value.dropUrl, function(dropIndex, dropUrl) {
+							result += generateRowUrlAnalysis(testNo++, dropUrl.url, dropUrl.action);
+						});
+						$.each(value.otherUrl, function(otherIndex, otherUrl) {
+							result += generateRowUrlAnalysis(testNo++, otherUrl.url, otherUrl.action);
+						});
+						result += '            </tbody>';
+						result += '        </table>';
+						result += '    </div>';
+						result += '</div>';
+					});
+					
+					$("#showBtnGenerate").show();
+					$('#modalData').html(result);
+					var totalRow =  $('.tabContent:visible').find('[id^=patternTestAnalysisTable-] > tbody > tr').length;
+				    $('#countSearchAnaly').text("Count : " + totalRow);
+					$('#modalRun').modal('show');
+					openTab(0);
+				}else if(data.header == 'error'){	
+					$('#modalRun').modal('hide');
+					modalAlert('Error : Cannot Run Pattern Testing');
+				}
+				setButton(false);
+				$("body").css("cursor", "default");
+			},error: function (textStatus, errorThrown) {
+				setButton(false);
+				$("body").css("cursor", "default");
+				alert('Error Status - ' + textStatus + " \n" +  'Error Thrown - ' + errorThrown);
+			}
+		});
+		
+	}
